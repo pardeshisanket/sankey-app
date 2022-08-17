@@ -1,49 +1,49 @@
-const mongoose = require("mongoose");
+const mongoose = require('mongoose')
 
 const sankeyUserSchema = new mongoose.Schema({
   username: {
     type: String,
-    required: true,
+    required: true
   },
-  firstname: {
+  firstName: {
     type: String,
-    required: true,
+    required: true
   },
-  lastname: {
+  lastName: {
     type: String,
-    required: true,
-  },
-  username: {
-    type: String,
-    required: true,
+    required: true
   },
   email: {
     type: String,
     required: true,
-    unique: true,
+    unique: true
   },
   password: {
     type: String,
-    required: true,
+    required: true
   },
   address: {
     type: String,
-    required: true,
+    required: true
   },
-  phoneno: {
+  city: {
+    type: String,
+    required: true
+  },
+  phoneNo: {
     type: Number,
-    required: true,
+    required: true
   },
   userType: {
     type: String,
-    default: "Normal",
+    default: 'Normal'
   },
   isDeleted: {
     type: Boolean,
-    default: false,
+    default: false
   }
-});
+})
 
-module.exports = mongoose.model("sankeyUser", sankeyUserSchema);
+module.exports = mongoose.model('sankeyUser', sankeyUserSchema)
 
 // username,firstname, lastname, email, password, address, phoneno, userType
