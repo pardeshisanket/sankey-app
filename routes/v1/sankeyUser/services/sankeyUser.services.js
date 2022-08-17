@@ -95,10 +95,6 @@ const placeOrder = async (userId, orderName, address, city) => {
 
 const filterOrders = async (searchKey, status, fromDate, toDate) => {
   try {
-    // console.log(searchKey, 'searchKey')
-    // console.log(status, 'status')
-    // console.log(fromDate, 'fromDate')
-    // console.log(toDate, 'toDate')
     if (!status) {
       status = 'Pending'
     }
@@ -118,52 +114,95 @@ const filterOrders = async (searchKey, status, fromDate, toDate) => {
     if (searchKey) {
       searchKeyCond = true
     }
-    const orderFILTER = [
-      [
-        {
-          $match: {
-            $and: [
-              {
-                $or: [
-                  searchKeyCond ? { username: { $regex: searchKey, $options: 'i' } } : {},
-                  searchKeyCond ? { firstName: { $regex: searchKey, $options: 'i' } } : {},
-                  searchKeyCond ? { lastName: { $regex: searchKey, $options: 'i' } } : {},
-                  searchKeyCond ? { email: { $regex: searchKey, $options: 'i' } } : {},
-                  searchKeyCond ? { orderName: { $regex: searchKey, $options: 'i' } } : {},
-                  searchKeyCond ? { city: { $regex: searchKey, $options: 'i' } } : {}
-                ]
-              },
-              {
-                status
-              },
-              {
-                updatedAt: {
-                  $gte: new Date(fromDate),
-                  $lte: (() => {
-                    const date = new Date(toDate)
-                    date.setDate(date.getDate() + 1)
-                    return date
-                  })()
-                }
-              }
-            ]
-          }
+
+    const addFields = {
+      $addFields: {
+        userObjectId: { $convert: { input: '$userId', to: 'objectId', onError: '', onNull: '' } }
+      }
+    }
+
+    const lookup = {
+      $lookup: {
+        from: 'sankeyusers',
+        as: 'userAllOrders',
+        let: {
+          userid: '$userObjectId'
         },
-        {
-          $project: {
-            userId: 1,
-            orderName: 1,
-            updatedAt: 1,
-            address: 1,
-            city: 1,
-            status: 1
+        pipeline: [
+          {
+            $match: {
+              $expr: {
+                $eq: [
+                  '$_id', '$$userid'
+                ]
+              }
+            }
+          }, {
+            $project: {
+              _id: 0,
+              firstName: 1,
+              lastName: 1,
+              username: 1,
+              email: 1,
+              address: 1,
+              city: 1,
+              phoneNo: 1,
+              userType: 1
+            }
           }
-        }
-      ]
-    ]
-    console.log(JSON.stringify(orderFILTER))
-    const orders = await orderSchema.aggregate(orderFILTER)
-    // console.log(orders, ' orders')
+        ]
+      }
+    }
+
+    const match = {
+      $match: {
+        $and: [
+          {
+            $or: [
+              searchKeyCond ? { 'userAllOrders.username': { $regex: searchKey, $options: 'i' } } : {},
+              searchKeyCond ? { 'userAllOrders.firstName': { $regex: searchKey, $options: 'i' } } : {},
+              searchKeyCond ? { 'userAllOrders.lastName': { $regex: searchKey, $options: 'i' } } : {},
+              searchKeyCond ? { 'userAllOrders.email': { $regex: searchKey, $options: 'i' } } : {},
+              searchKeyCond ? { orderName: { $regex: searchKey, $options: 'i' } } : {},
+              searchKeyCond ? { city: { $regex: searchKey, $options: 'i' } } : {}
+            ]
+          },
+          {
+            status
+          },
+          {
+            updatedAt: {
+              $gte: new Date(fromDate),
+              $lte: (() => {
+                const date = new Date(toDate)
+                date.setDate(date.getDate() + 1)
+                return date
+              })()
+            }
+          }
+        ]
+      }
+    }
+
+    const project = {
+      $project: {
+        userId: 1,
+        orderName: 1,
+        updatedAt: 1,
+        address: 1,
+        city: 1,
+        status: 1
+        // 'userAllOrders.username': 1,
+        // 'userAllOrders.firstName': 1,
+        // 'userAllOrders.lastName': 1,
+        // 'userAllOrders.email': 1
+      }
+    }
+
+    const stages = [addFields, lookup, match, project]
+    // console.log('orderFILTER ', JSON.stringify(stages))
+    const orders = await orderSchema.aggregate(stages)
+    console.log(orders, ' orders')
     if (orders) return orders
     throw new Error('Order(s) not found!')
   } catch (err) {
