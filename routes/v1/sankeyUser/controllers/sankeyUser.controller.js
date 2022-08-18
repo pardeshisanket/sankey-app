@@ -116,12 +116,12 @@ const placeOrder = async (req, res) => {
 // Get Orders using filters
 const getOrders = async (req, res) => {
   try {
-    const { searchKey, status, fromDate, toDate } = req.body
-    const filteredOrders = await sankeyUserService.filterOrders(searchKey, status, fromDate, toDate)
+    const { searchKey, sortingKey, sortOrder, page, status, fromDate, toDate } = req.body
+    const filteredOrders = await sankeyUserService.filterOrders(searchKey, sortingKey, sortOrder, page, status, fromDate, toDate)
     // console.log(filteredOrders, 'Filtered Orders')
     return res.status(200).json({
       success: true,
-      body: filteredOrders,
+      data: filteredOrders,
       message: 'Filtered Orders retrieved!'
     })
   } catch (err) {

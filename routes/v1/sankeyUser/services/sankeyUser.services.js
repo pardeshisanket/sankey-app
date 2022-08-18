@@ -9,8 +9,9 @@ const orderSchema = require('../../../../db/models/order')
 // Create UserService
 const createUser = async (body) => {
   try {
-    const addedUser = await sankeyUser.create(body)
-    return addedUser
+    const id = body._id
+    const newUser = await sankeyUser.findOneAndUpdate({ _id: id }, body, { upsert: true, new: true })
+    return newUser
   } catch (err) {
     throw Error('Error: ' + err)
   }
@@ -93,27 +94,49 @@ const placeOrder = async (userId, orderName, address, city) => {
   }
 }
 
-const filterOrders = async (searchKey, status, fromDate, toDate) => {
+const filterOrders = async (searchKey, sortingKey, sortOrder, page, status, fromDate, toDate) => {
   try {
-    if (!status) {
-      status = 'Pending'
-    }
-    if (!fromDate) {
-      const date = new Date()
-      console.log(date, 'today')
-      fromDate = new Date(date.setMonth(date.getMonth() - 1))
-      console.log(fromDate, 'toDate')
-    }
-    if (!toDate) {
-      const date = new Date()
-      console.log(date, 'today')
-      toDate = new Date(date.setMonth(date.getMonth() + 1))
-      console.log(toDate, 'toDate')
-    }
     let searchKeyCond = false
     if (searchKey) {
       searchKeyCond = true
     }
+
+    if (!status) {
+      status = 'Pending'
+    }
+
+    if (!fromDate) {
+      const date = new Date()
+      fromDate = new Date(date.setMonth(date.getMonth() - 1))
+    }
+    if (!toDate) {
+      const date = new Date()
+      toDate = new Date(date.setMonth(date.getMonth() + 1))
+    }
+
+    if (!sortingKey) {
+      sortingKey = 'updatedAt'
+    }
+    let sortFlag = -1
+    if (sortOrder === 'ascending') {
+      sortOrder = 'ascending'
+      sortFlag = 1
+    } else if (!sortOrder) {
+      sortOrder = 'descending'
+      sortFlag = -1
+    }
+
+    const limit = 2
+    let skip = 0
+    if (!page) {
+      page = 0
+    }
+    skip = page * limit
+
+    const paginationFilter = [
+      { $skip: skip },
+      { $limit: limit }
+    ]
 
     const addFields = {
       $addFields: {
@@ -184,25 +207,41 @@ const filterOrders = async (searchKey, status, fromDate, toDate) => {
       }
     }
 
-    const project = {
-      $project: {
-        userId: 1,
-        orderName: 1,
-        updatedAt: 1,
-        address: 1,
-        city: 1,
-        status: 1
-        // 'userAllOrders.username': 1,
-        // 'userAllOrders.firstName': 1,
-        // 'userAllOrders.lastName': 1,
-        // 'userAllOrders.email': 1
+    const sort = {
+      $sort: {
+      }
+    }
+    sort.$sort[sortingKey] = sortFlag
+
+    const facet = {
+      $facet: {
+        rows: paginationFilter,
+        count: [
+          { $count: 'count' }
+        ]
       }
     }
 
-    const stages = [addFields, lookup, match, project]
-    // console.log('orderFILTER ', JSON.stringify(stages))
+    const count = {
+      $addFields: {
+        count: {
+          $switch: {
+            branches: [
+              {
+                case: { $eq: ['$count', []] },
+                then: [{ count: 0 }]
+              }
+            ],
+            default: {
+              $ifNull: [{ $arrayElemAt: ['$count.count', 0] }, 0]
+            }
+          }
+        }
+      }
+    }
+
+    const stages = [addFields, lookup, match, sort, facet, count]
     const orders = await orderSchema.aggregate(stages)
-    console.log(orders, ' orders')
     if (orders) return orders
     throw new Error('Order(s) not found!')
   } catch (err) {

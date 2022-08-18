@@ -42,9 +42,7 @@ const getUser = async (req, res) => {
 // Create a User
 const addUser = async (req, res) => {
   try {
-    console.log('in addUser controller')
     const hasError = validationResult(req)
-    console.log(hasError)
     if (!hasError.isEmpty()) {
       return res.send({ error: hasError.array() })
     }
@@ -66,7 +64,6 @@ const addUser = async (req, res) => {
 // Update a User
 const updateUser = async (req, res) => {
   try {
-    console.log('in updateUser controller')
     const hasError = validationResult(req)
     if (!hasError.isEmpty()) {
       return res.send({ error: hasError.array() })
@@ -90,7 +87,6 @@ const updateUser = async (req, res) => {
 // Delete a User
 const deleteUser = async (req, res) => {
   try {
-    console.log('in deleteUser controller')
     const id = req.params.id
     const deleteUser = await UserService.deleteUser(id)
     return res.status(200).json({

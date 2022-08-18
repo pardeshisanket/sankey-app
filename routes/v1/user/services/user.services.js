@@ -21,8 +21,9 @@ const getUser = async (userID) => {
 
 const addUser = async (body) => {
   try {
-    const AddedUser = await User.create(body)
-    return AddedUser
+    const id = body._id
+    const newUser = await User.findOneAndUpdate({ _id: id }, body, { upsert: true, new: true })
+    return newUser
   } catch (err) {
     throw Error('Error: ' + err)
   }
