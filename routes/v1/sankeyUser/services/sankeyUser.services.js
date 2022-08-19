@@ -94,43 +94,21 @@ const placeOrder = async (userId, orderName, address, city) => {
   }
 }
 
-const filterOrders = async (searchKey, sortingKey, sortOrder, page, status, fromDate, toDate) => {
+const filterOrders = async (searchKey, sortingKey, sortAsc, page, status, fromDate, toDate) => {
   try {
-    let searchKeyCond = false
-    if (searchKey) {
-      searchKeyCond = true
-    }
+    status = !status ? 'Pending' : status
+    const today = new Date()
+    fromDate = fromDate === null ? new Date(today.setMonth(today.getMonth() - 1)) : fromDate
+    toDate = toDate === null ? new Date(today.setMonth(today.getMonth() + 1)) : toDate
 
-    if (!status) {
-      status = 'Pending'
-    }
+    sortingKey = !sortingKey ? 'updatedAt' : sortingKey
 
-    if (!fromDate) {
-      const date = new Date()
-      fromDate = new Date(date.setMonth(date.getMonth() - 1))
-    }
-    if (!toDate) {
-      const date = new Date()
-      toDate = new Date(date.setMonth(date.getMonth() + 1))
-    }
-
-    if (!sortingKey) {
-      sortingKey = 'updatedAt'
-    }
     let sortFlag = -1
-    if (sortOrder === 'ascending') {
-      sortOrder = 'ascending'
-      sortFlag = 1
-    } else if (!sortOrder) {
-      sortOrder = 'descending'
-      sortFlag = -1
-    }
+    sortAsc === true ? sortFlag = 1 : sortFlag = -1
 
-    const limit = 2
+    const limit = 5
     let skip = 0
-    if (!page) {
-      page = 0
-    }
+    page = !page ? 0 : page
     skip = page * limit
 
     const paginationFilter = [
@@ -182,12 +160,12 @@ const filterOrders = async (searchKey, sortingKey, sortOrder, page, status, from
         $and: [
           {
             $or: [
-              searchKeyCond ? { 'userAllOrders.username': { $regex: searchKey, $options: 'i' } } : {},
-              searchKeyCond ? { 'userAllOrders.firstName': { $regex: searchKey, $options: 'i' } } : {},
-              searchKeyCond ? { 'userAllOrders.lastName': { $regex: searchKey, $options: 'i' } } : {},
-              searchKeyCond ? { 'userAllOrders.email': { $regex: searchKey, $options: 'i' } } : {},
-              searchKeyCond ? { orderName: { $regex: searchKey, $options: 'i' } } : {},
-              searchKeyCond ? { city: { $regex: searchKey, $options: 'i' } } : {}
+              { 'userAllOrders.username': { $regex: searchKey, $options: 'i' } },
+              { 'userAllOrders.firstName': { $regex: searchKey, $options: 'i' } },
+              { 'userAllOrders.lastName': { $regex: searchKey, $options: 'i' } },
+              { 'userAllOrders.email': { $regex: searchKey, $options: 'i' } },
+              { orderName: { $regex: searchKey, $options: 'i' } },
+              { city: { $regex: searchKey, $options: 'i' } }
             ]
           },
           {
@@ -207,11 +185,24 @@ const filterOrders = async (searchKey, sortingKey, sortOrder, page, status, from
       }
     }
 
-    const sort = {
-      $sort: {
+    const sortingFunction = {
+      updatedAt: {
+        updatedAt: sortFlag
+      },
+      orderName: {
+        orderName: sortFlag
+      },
+      city: {
+        city: sortFlag
+      },
+      status: {
+        status: sortFlag
       }
+    }[sortingKey]
+
+    const sort = {
+      $sort: { ...sortingFunction, id: 1 }
     }
-    sort.$sort[sortingKey] = sortFlag
 
     const facet = {
       $facet: {
