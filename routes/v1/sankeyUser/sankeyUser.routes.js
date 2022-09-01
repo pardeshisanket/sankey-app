@@ -19,7 +19,6 @@ router
       .withMessage('Must be atleast 6 chars long'),
     sankeyUserController.createUser
   )
-
   // Getting all Users
   .get(authorization, sankeyUserController.getAllUsers)
 

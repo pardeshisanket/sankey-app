@@ -38,12 +38,21 @@ const sankeyUserSchema = new mongoose.Schema({
     type: String,
     default: 'Normal'
   },
+  hobbies: [
+    {
+      hobby: {
+        type: String
+      }
+    }
+  ],
   isDeleted: {
     type: Boolean,
     default: false
   }
 })
 
-module.exports = mongoose.model('sankeyUser', sankeyUserSchema)
+const sankeyUser = mongoose.model('sankeyUser', sankeyUserSchema)
+
+module.exports = sankeyUser
 
 // username,firstname, lastname, email, password, address, phoneno, userType

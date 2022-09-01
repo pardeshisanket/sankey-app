@@ -1,5 +1,5 @@
 const config = require('../../../../config/config')
-// const mongoose = require("mongoose")
+const mongoose = require('mongoose')
 const jwt = require('jsonwebtoken')
 const argon2 = require('argon2')
 
@@ -10,7 +10,10 @@ const orderSchema = require('../../../../db/models/order')
 const createUser = async (body) => {
   try {
     const id = body._id
-    const newUser = await sankeyUser.findOneAndUpdate({ _id: id }, body, { upsert: true, new: true })
+    if (!body._id) {
+      delete body._id
+    }
+    const newUser = await sankeyUser.findOneAndUpdate({ _id: id || mongoose.Types.ObjectId() }, body, { upsert: true, new: true })
     return newUser
   } catch (err) {
     throw Error('Error: ' + err)
@@ -31,13 +34,117 @@ const getUser = async (id) => {
 }
 
 // Get AllUsers using aggregation
-const getAllUsers = async () => {
+const getAllUsers = async (searchKey = '', sortingKey = 'firstName', sortOrder = 'asc', page, filterCity) => {
   try {
-    const users = await sankeyUser.aggregate([
-      {
-        $match: { isDeleted: false }
+    // fullname username email address city
+    sortingKey = !sortingKey ? 'firstName' : sortingKey
+    let sortFlag = -1
+    sortOrder === 'asc' ? sortFlag = 1 : sortFlag = -1
+    console.log('sortFlag', sortFlag)
+    // filterCity = filterCity === '' ? undefined : filterCity
+    console.log('filterCity ', filterCity)
+
+    const limit = 2
+    let skip = 0
+    page = !page ? 0 : page
+    skip = page * limit
+
+    const paginationFilter = [
+      { $skip: skip },
+      { $limit: limit }
+    ]
+
+    const match = {
+      $match: {
+        $and: [
+          {
+            $or: [
+              { firstName: { $regex: searchKey, $options: 'i' } },
+              { lastName: { $regex: searchKey, $options: 'i' } },
+              { username: { $regex: searchKey, $options: 'i' } },
+              { email: { $regex: searchKey, $options: 'i' } },
+              { address: { $regex: searchKey, $options: 'i' } },
+              // { city: { $regex: searchKey, $options: 'i' } },
+              { phoneNo: { $regex: searchKey, $options: 'i' } },
+              {
+                hobbies: {
+                  $elemMatch: {
+                    hobby: {
+                      $all: [
+                        searchKey
+                      ]
+                    }
+                  }
+                }
+              }
+            ]
+          },
+          filterCity?.length
+            ? {
+                city: filterCity
+              }
+            : {},
+          {
+            isDeleted: false
+          }
+        ]
       }
-    ])
+    }
+
+    const sortingFunction = {
+      firstName: {
+        firstName: sortFlag
+      },
+      lastName: {
+        lastName: sortFlag
+      },
+      username: {
+        username: sortFlag
+      },
+      email: {
+        email: sortFlag
+      },
+      address: {
+        address: sortFlag
+      },
+      city: {
+        city: sortFlag
+      }
+    }[sortingKey]
+
+    const sort = {
+      $sort: { ...sortingFunction }
+    }
+
+    const facet = {
+      $facet: {
+        rows: paginationFilter,
+        count: [
+          { $count: 'count' }
+        ]
+      }
+    }
+    const count = {
+      $addFields: {
+        count: {
+          $switch: {
+            branches: [
+              {
+                case: { $eq: ['$count', []] },
+                then: [{ count: 0 }]
+              }
+            ],
+            default: {
+              $ifNull: [{ $arrayElemAt: ['$count.count', 0] }, 0]
+            }
+          }
+        }
+      }
+    }
+
+    const stages = [match, sort, facet, count]
+
+    const users = await sankeyUser.aggregate(stages)
     return users
   } catch (err) {
     throw Error('Error :' + err)
@@ -49,10 +156,7 @@ const generateToken = async (email, id) => {
   try {
     const jwtSecretKey = config.JWT_TOKEN
     const user = { email, id }
-    console.log(id)
-    // console.log(user, ' user')
     const token = jwt.sign(user, jwtSecretKey)
-    // console.log(token)
     return token
   } catch (err) {
     throw Error('Error :' + err)

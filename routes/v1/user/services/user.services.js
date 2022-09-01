@@ -1,4 +1,5 @@
 const User = require('../../../../db/models/user')
+const mongooose = require('mongoose')
 
 const getAllUsers = async () => {
   try {
@@ -22,7 +23,7 @@ const getUser = async (userID) => {
 const addUser = async (body) => {
   try {
     const id = body._id
-    const newUser = await User.findOneAndUpdate({ _id: id }, body, { upsert: true, new: true })
+    const newUser = await User.findOneAndUpdate({ _id: id || mongooose.Types.ObjectId() }, body, { upsert: true, new: true })
     return newUser
   } catch (err) {
     throw Error('Error: ' + err)

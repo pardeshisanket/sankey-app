@@ -48,7 +48,13 @@ const getUser = async (req, res) => {
 // Get All Users
 const getAllUsers = async (req, res) => {
   try {
-    const users = await sankeyUserService.getAllUsers()
+    const { searchKey, sortingKey, sortOrder, page, filterCity } = req.query
+    // console.log('searchKey', searchKey)
+    // console.log('sortingKey', sortingKey)
+    // console.log('sortOrder', sortOrder)
+    // console.log('page', page)
+    console.log('filterCity', filterCity)
+    const users = await sankeyUserService.getAllUsers(searchKey, sortingKey, sortOrder, page, filterCity)
     return res.status(200).json({
       success: true,
       data: users,
@@ -71,7 +77,7 @@ const userLogin = async (req, res) => {
       throw new Error('Please enter valid credentails.')
     }
     const { id } = user
-    console.log(id, 'id')
+    // console.log(id, 'id')
     const token = await sankeyUserService.generateToken(email, id)
     return res.status(200).json({
       success: true,
